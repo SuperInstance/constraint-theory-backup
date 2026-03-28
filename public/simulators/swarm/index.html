@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergent Swarm Intelligence - Boids Simulator</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Accessibility & Mobile Improvements */
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+        :focus-visible { outline: 2px solid #00ffaa; outline-offset: 2px; border-radius: 4px; }
+        
+        /* Touch-friendly controls */
+        .control-group input[type="range"]::-webkit-slider-thumb { width: 24px; height: 24px; }
+        .control-group input[type="range"]::-moz-range-thumb { width: 24px; height: 24px; }
+        .checkbox-label input[type="checkbox"] { width: 24px; height: 24px; }
+        .btn { min-height: 44px; }
+        .control-group select { min-height: 44px; }
+        
+        /* Motion sensitivity warning */
+        .motion-warning { background: rgba(255, 200, 0, 0.1); border: 1px solid rgba(255, 200, 0, 0.3); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; color: #ffc800; font-size: 0.85rem; }
+        
+        /* Pause indicator */
+        .pause-indicator { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.8); border: 2px solid #00ffaa; border-radius: 12px; padding: 20px 30px; text-align: center; display: none; z-index: 10; }
+        .pause-indicator span { font-size: 1.5rem; font-weight: bold; color: #00ffaa; display: block; }
+        .pause-indicator small { color: #888; margin-top: 8px; display: block; }
+        
+        /* Keyboard shortcuts grid */
+        .shortcuts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
+        .shortcut { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #aaa; }
+        .shortcut kbd { background: rgba(0, 255, 170, 0.15); border: 1px solid rgba(0, 255, 170, 0.3); border-radius: 4px; padding: 2px 6px; font-family: monospace; font-size: 0.8rem; color: #00ffaa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Emergent Swarm Intelligence</h1>
+            <p class="subtitle">Complex global behavior emerges from simple local constraints - FPS paradigm in action</p>
+        </header>
+
+        <div class="main-content">
+            <div class="controls-panel">
+                <h2>Swarm Parameters</h2>
+
+                <div class="control-group">
+                    <label>Boid Count: <span id="countValue">200</span></label>
+                    <input type="range" id="boidCount" min="10" max="500" value="200" step="10">
+                </div>
+
+                <div class="control-section">
+                    <h3>Flocking Forces</h3>
+
+                    <div class="control-group">
+                        <label>Separation: <span id="separationValue">1.5</span></label>
+                        <input type="range" id="separation" min="0" max="5" value="1.5" step="0.1">
+                    </div>
+
+                    <div class="control-group">
+                        <label>Alignment: <span id="alignmentValue">1.0</span></label>
+                        <input type="range" id="alignment" min="0" max="5" value="1.0" step="0.1">
+                    </div>
+
+                    <div class="control-group">
+                        <label>Cohesion: <span id="cohesionValue">1.0</span></label>
+                        <input type="range" id="cohesion" min="0" max="5" value="1.0" step="0.1">
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>Perception & Physics</h3>
+
+                    <div class="control-group">
+                        <label>Perception Radius: <span id="radiusValue">50</span>px</label>
+                        <input type="range" id="perceptionRadius" min="20" max="150" value="50" step="5">
+                    </div>
+
+                    <div class="control-group">
+                        <label>Max Speed: <span id="speedValue">4</span></label>
+                        <input type="range" id="maxSpeed" min="1" max="10" value="4" step="0.5">
+                    </div>
+
+                    <div class="control-group">
+                        <label>Max Force: <span id="forceValue">0.1</span></label>
+                        <input type="range" id="maxForce" min="0.01" max="0.5" value="0.1" step="0.01">
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>Animation Control</h3>
+                    
+                    <div class="motion-warning" role="alert">
+                        ⚠️ This simulation contains continuous motion. Press Space to pause.
+                    </div>
+                    
+                    <div class="control-group">
+                        <button id="pauseBtn" class="btn w-full" style="background: linear-gradient(135deg, #00ffaa, #00aaff); color: #0a0a14;" aria-pressed="false">
+                            ⏸️ Pause Animation
+                        </button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>Interactive Modes</h3>
+
+                    <div class="control-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="predatorMode" aria-describedby="predatorDesc">
+                            <span>Predator Mode (Mouse)</span>
+                        </label>
+                        <span id="predatorDesc" class="sr-only">Your cursor becomes a predator that boids flee from</span>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="obstacleMode">
+                            <span>Obstacle Mode (Click to place)</span>
+                        </label>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showPerception">
+                            <span>Show Perception Radius</span>
+                        </label>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showTrails" checked>
+                            <span>Show Trails</span>
+                        </label>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="windForce">
+                            <span>Wind Force</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>Visualization</h3>
+
+                    <div class="control-group">
+                        <label>Color Mode:</label>
+                        <select id="colorMode">
+                            <option value="velocity">By Velocity</option>
+                            <option value="group">By Group</option>
+                            <option value="depth">By Depth</option>
+                            <option value="uniform">Uniform</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button id="resetBtn" class="btn btn-primary">Reset Swarm</button>
+                    <button id="clearObstacles" class="btn btn-secondary">Clear Obstacles</button>
+                </div>
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="boidCanvas"
+                    role="application"
+                    aria-label="Swarm simulation with autonomous boids. Press Space to pause. Use sliders to adjust parameters."
+                    tabindex="0"
+                    aria-describedby="canvasInstructions">
+                </canvas>
+                <p id="canvasInstructions" class="sr-only">
+                    Interactive swarm simulation. Press Space to pause/resume. 
+                    Enable Predator Mode to make boids flee from your cursor.
+                </p>
+                <div id="pauseIndicator" class="pause-indicator" role="status" aria-live="polite">
+                    <span>⏸ PAUSED</span>
+                    <small>Press SPACE to resume</small>
+                </div>
+                <div class="stats-panel" aria-live="polite" aria-atomic="true">
+                    <div class="stat-item">
+                        <span class="stat-label">FPS:</span>
+                        <span id="fps" class="stat-value">60</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Boids:</span>
+                        <span id="boidCountDisplay" class="stat-value">200</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Avg Speed:</span>
+                        <span id="avgSpeed" class="stat-value">0.00</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Flocks:</span>
+                        <span id="flockCount" class="stat-value">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h3>Keyboard Shortcuts</h3>
+            <div class="shortcuts-grid">
+                <div class="shortcut"><kbd>Space</kbd> Pause/Resume</div>
+                <div class="shortcut"><kbd>P</kbd> Toggle Predator Mode</div>
+                <div class="shortcut"><kbd>R</kbd> Reset Swarm</div>
+                <div class="shortcut"><kbd>1</kbd>-<kbd>4</kbd> Change Color Mode</div>
+            </div>
+            
+            <h3>About Boids</h3>
+            <p>
+                <strong>Boids</strong> is an artificial life program developed by Craig Reynolds in 1986
+                that simulates the flocking behavior of birds. The remarkable insight is that complex
+                global behavior emerges from just three simple local rules:
+            </p>
+            <ul>
+                <li><strong>Separation:</strong> Steer to avoid crowding nearby flockmates</li>
+                <li><strong>Alignment:</strong> Steer towards the average heading of nearby flockmates</li>
+                <li><strong>Cohesion:</strong> Steer to move toward the average position of nearby flockmates</li>
+            </ul>
+            <p>
+                <strong>Connection to Constraint Theory:</strong> This demonstrates the FPS (First-Person Shooter)
+                paradigm - each boid only perceives its local neighborhood within its perception radius.
+                There is no central coordinator or global state. Complex order emerges spontaneously from
+                geometric constraints between agents.
+            </p>
+            <p>
+                <strong>Interactive Features:</strong> Enable Predator Mode to make boids flee from your
+                mouse cursor, or use Obstacle Mode to place barriers that boids must navigate around.
+                On mobile, touch the canvas to activate predator mode!
+            </p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
